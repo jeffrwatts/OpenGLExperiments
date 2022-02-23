@@ -12,7 +12,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 
-class RawDepthActivity : AppCompatActivity(), GLSurfaceView.Renderer {
+class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     companion object {
         const val TAG = "RawDepthActivity"
@@ -26,7 +26,7 @@ class RawDepthActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_raw_depth)
+        setContentView(R.layout.activity_depth_api)
         surfaceView = findViewById(R.id.surfaceview)
         displayRotationHelper = DisplayRotationHelper(this)
 

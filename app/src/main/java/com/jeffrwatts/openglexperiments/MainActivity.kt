@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
 
     private val buttonOpenGLFullScreen: Button by lazy { findViewById(R.id.buttonOpenGLFullScreen) }
     private val buttonCheckARCoreAvailable: Button by lazy { findViewById(R.id.buttonCheckARCoreAvailable) }
-    private val buttonSimpleARCore: Button by lazy { findViewById(R.id.buttonRawDepth) }
+    private val buttonSimpleARCore: Button by lazy { findViewById(R.id.buttonDepthAPI) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         buttonCheckARCoreAvailable.setOnClickListener { checkARCoreAvailability() }
 
         buttonSimpleARCore.isEnabled = false
-        buttonSimpleARCore.setOnClickListener { launchActivity(RawDepthActivity::class.java)}
+        buttonSimpleARCore.setOnClickListener { launchActivity(DepthAPIActivity::class.java)}
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
