@@ -5,7 +5,9 @@ import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.google.ar.core.Config
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import javax.microedition.khronos.egl.EGLConfig
@@ -18,10 +20,17 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         const val TAG = "RawDepthActivity"
     }
 
-    private var arCoresession: Session? = null
+    private var showDepthMap = false
+    private var isDepthSupported = false
+    private var arCoreSession: Session? = null
+
+    private val buttonShowDepth: Button by lazy { findViewById(R.id.buttonShowDepth) }
     private lateinit var surfaceView: GLSurfaceView
     private lateinit var displayRotationHelper: DisplayRotationHelper
+
     private val backgroundRenderer = BackgroundRenderer()
+    private val depthTextureHelper = DepthTextureHandler()
+
     private var previousTrackingState = TrackingState.STOPPED
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +38,16 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         setContentView(R.layout.activity_depth_api)
         surfaceView = findViewById(R.id.surfaceview)
         displayRotationHelper = DisplayRotationHelper(this)
+
+        buttonShowDepth.setOnClickListener {
+            if (isDepthSupported) {
+                showDepthMap = !showDepthMap
+                buttonShowDepth.text = if (showDepthMap) "Hide Depth" else "Show Depth"
+            } else {
+                showDepthMap = false
+                buttonShowDepth.text = "Depth Not Supported"
+            }
+        }
 
         // Setup SurfaceView
         surfaceView.preserveEGLContextOnPause = true;
@@ -42,11 +61,17 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     override fun onResume() {
         Log.d(TAG, "onResume")
         super.onResume()
-        if (arCoresession == null) {
+        if (arCoreSession == null) {
             Log.d(TAG, "Create Session")
-            arCoresession = Session(this)
+            arCoreSession = Session(this).also { session->
+                val config = session.config
+                isDepthSupported = session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)
+                config.depthMode = if (isDepthSupported) Config.DepthMode.AUTOMATIC else Config.DepthMode.DISABLED
+                session.configure(config)
+            }
         }
-        arCoresession?.resume()
+
+        arCoreSession?.resume()
         surfaceView.onResume()
         displayRotationHelper.onResume()
     }
@@ -59,14 +84,16 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         // still call session.update() and get a SessionPausedException.
         displayRotationHelper.onPause()
         surfaceView.onPause()
-        arCoresession?.pause()
+        arCoreSession?.pause()
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated")
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f)
         try {
+            depthTextureHelper.createOnGlThread()
             backgroundRenderer.createOnGlThread(this)
+            backgroundRenderer.createDepthShaders(this, depthTextureHelper.depthTexture)
         } catch (e: Exception) {
             Log.e(TAG, "Background Renderer threw exception", e)
         }
@@ -82,7 +109,7 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         //Log.d(TAG, "onDrawFrame")
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
-        arCoresession?.let { session ->
+        arCoreSession?.let { session ->
             displayRotationHelper.updateSessionIfNeeded(session)
 
             session.setCameraTextureName(backgroundRenderer.textureId)
@@ -90,7 +117,15 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             val frame = session.update()
             val camera = frame.camera
 
+            if (isDepthSupported) {
+                depthTextureHelper.update(frame)
+            }
+
             backgroundRenderer.draw(frame)
+
+            if (showDepthMap) {
+                backgroundRenderer.drawDepth(frame)
+            }
             updateScreenOnTrackingState(camera.trackingState)
             if(camera.trackingState == TrackingState.PAUSED) {
                 return
