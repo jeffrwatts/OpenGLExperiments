@@ -1,10 +1,12 @@
 package com.jeffrwatts.openglexperiments
 
+import android.media.Image
 import android.opengl.GLES20
 import android.opengl.GLES30
 import android.util.Log
 import com.google.ar.core.Frame
 import com.google.ar.core.exceptions.NotYetAvailableException
+import java.nio.ByteOrder
 
 class DepthTextureHandler {
     companion object {
@@ -29,6 +31,12 @@ class DepthTextureHandler {
     fun update(frame: Frame) {
         try {
             val depthImage = frame.acquireDepthImage()
+
+            val x = depthImage.width / 2
+            val y = depthImage.height / 2
+            val distance = getMillimetersDepth(depthImage, x, y)
+            Log.d(TAG, "Distance at $x, $y, is $distance mm")
+
             depthWidth = depthImage.width
             depthHeight = depthImage.height
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, depthTexture)
@@ -48,5 +56,14 @@ class DepthTextureHandler {
             // This normally means that depth data is not available yet.
             Log.e(TAG, "Exception trying to get depth image", e)
         }
+    }
+
+    private fun getMillimetersDepth(depthImage: Image, x: Int, y: Int): Int {
+        // The depth image has a single plane, which stores depth for each
+        // pixel as 16-bit unsigned integers.
+        val plane: Image.Plane = depthImage.getPlanes().get(0)
+        val byteIndex: Int = x * plane.pixelStride + y * plane.rowStride
+        val buffer = plane.buffer.order(ByteOrder.nativeOrder())
+        return buffer.getShort(byteIndex).toInt()
     }
 }

@@ -4,12 +4,12 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.ar.core.Config
-import com.google.ar.core.Session
-import com.google.ar.core.TrackingState
+import com.google.ar.core.*
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -30,6 +30,7 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     private val backgroundRenderer = BackgroundRenderer()
     private val depthTextureHelper = DepthTextureHandler()
+    private val tapHelper: TapHelper by lazy { TapHelper(this) }
 
     private var previousTrackingState = TrackingState.STOPPED
 
@@ -37,6 +38,7 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_depth_api)
         surfaceView = findViewById(R.id.surfaceview)
+        surfaceView.setOnTouchListener(tapHelper)
         displayRotationHelper = DisplayRotationHelper(this)
 
         buttonShowDepth.setOnClickListener {
@@ -121,6 +123,10 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 depthTextureHelper.update(frame)
             }
 
+            if (camera.trackingState == TrackingState.TRACKING) {
+                handleTap(frame, camera)
+            }
+
             backgroundRenderer.draw(frame)
 
             if (showDepthMap) {
@@ -146,6 +152,20 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 runOnUiThread { window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
             }
             else->{}
+        }
+    }
+
+    private fun handleTap(frame: Frame, camera: Camera) {
+        val motionEvent = tapHelper.poll()
+
+        motionEvent?.let { event ->
+            frame.hitTest(event).forEach { hit ->
+                (hit.trackable as? DepthPoint)?.let {
+                    runOnUiThread {
+                        Toast.makeText(this,"Distance at tap is ${hit.distance} meters.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
     }
 }
