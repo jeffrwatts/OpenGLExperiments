@@ -21,6 +21,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.OpenGLExperiments">
         <activity
+            android:name=".RawDepthAPIActivity"
+            android:exported="false" />
+        <activity
             android:name=".DepthAPIActivity"
             android:exported="false" />
         <activity
@@ -35,7 +38,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <meta-data android:name="com.google.ar.core" android:value="required" />
+
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="required" />
     </application>
 
 </manifest>

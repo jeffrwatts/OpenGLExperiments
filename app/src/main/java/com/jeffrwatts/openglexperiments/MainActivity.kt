@@ -22,7 +22,8 @@ class MainActivity : AppCompatActivity() {
 
     private val buttonOpenGLFullScreen: Button by lazy { findViewById(R.id.buttonOpenGLFullScreen) }
     private val buttonCheckARCoreAvailable: Button by lazy { findViewById(R.id.buttonCheckARCoreAvailable) }
-    private val buttonSimpleARCore: Button by lazy { findViewById(R.id.buttonDepthAPI) }
+    private val buttonDepthAPI: Button by lazy { findViewById(R.id.buttonDepthAPI) }
+    private val buttonRawDepthAPI: Button by lazy { findViewById(R.id.buttonRawDepthAPI) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,8 +33,11 @@ class MainActivity : AppCompatActivity() {
 
         buttonCheckARCoreAvailable.setOnClickListener { checkARCoreAvailability() }
 
-        buttonSimpleARCore.isEnabled = false
-        buttonSimpleARCore.setOnClickListener { launchActivity(DepthAPIActivity::class.java)}
+        buttonDepthAPI.isEnabled = false
+        buttonDepthAPI.setOnClickListener { launchActivity(DepthAPIActivity::class.java)}
+
+        buttonRawDepthAPI.isEnabled = false
+        buttonRawDepthAPI.setOnClickListener { launchActivity(RawDepthAPIActivity::class.java)}
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
@@ -49,7 +53,8 @@ class MainActivity : AppCompatActivity() {
         if (availability.isTransient) {
             Toast.makeText(this, "ARCore checkAvailability isTransient is true", Toast.LENGTH_LONG).show()
         } else if (availability.isSupported) {
-            buttonSimpleARCore.isEnabled = true
+            buttonDepthAPI.isEnabled = true
+            buttonRawDepthAPI.isEnabled = true
         } else {
             Toast.makeText(this, "ARCore is not available.", Toast.LENGTH_LONG).show()
         }
