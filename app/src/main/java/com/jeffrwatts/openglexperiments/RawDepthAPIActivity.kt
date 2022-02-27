@@ -2,11 +2,12 @@ package com.jeffrwatts.openglexperiments
 
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
+import androidx.appcompat.app.AppCompatActivity
 import com.google.ar.core.*
+import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -22,6 +23,7 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
     private lateinit var displayRotationHelper: DisplayRotationHelper
 
     private val backgroundRenderer = BackgroundRenderer()
+    private val depthRenderer = DepthRenderer()
 
     private var previousTrackingState = TrackingState.STOPPED
 
@@ -49,6 +51,7 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
                 val config = session.config
                 isRawDepthSupported = session.isDepthModeSupported(Config.DepthMode.RAW_DEPTH_ONLY)
                 config.depthMode = if (isRawDepthSupported) Config.DepthMode.RAW_DEPTH_ONLY else Config.DepthMode.DISABLED
+                config.focusMode = Config.FocusMode.AUTO
                 session.configure(config)
             }
         }
@@ -74,6 +77,8 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f)
         try {
             backgroundRenderer.createOnGlThread(this)
+            depthRenderer.createOnGlThread(this)
+
         } catch (e: Exception) {
             Log.e(TAG, "Background Renderer threw exception", e)
         }
@@ -90,18 +95,26 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
         arCoreSession?.let { session ->
-            displayRotationHelper.updateSessionIfNeeded(session)
+            try {
+                displayRotationHelper.updateSessionIfNeeded(session)
 
-            session.setCameraTextureName(backgroundRenderer.textureId)
+                session.setCameraTextureName(backgroundRenderer.textureId)
 
-            val frame = session.update()
-            val camera = frame.camera
+                val frame = session.update()
+                val camera = frame.camera
 
-            backgroundRenderer.draw(frame)
+                backgroundRenderer.draw(frame)
 
-            updateScreenOnTrackingState(camera.trackingState)
-            if(camera.trackingState == TrackingState.PAUSED) {
-                return
+                val points = DepthData.create(frame, session.createAnchor(camera.pose))
+                points?.let {
+                    depthRenderer.update(it)
+                    depthRenderer.draw(camera)
+                }
+
+                updateScreenOnTrackingState(camera.trackingState)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception Thrown in onDraw", e)
             }
         }
     }
