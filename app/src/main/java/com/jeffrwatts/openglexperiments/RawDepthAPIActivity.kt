@@ -5,12 +5,14 @@ import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
-import android.widget.*
+import android.widget.SeekBar
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
-import androidx.core.widget.CompoundButtonCompat
-import com.google.ar.core.*
-import java.nio.FloatBuffer
+import com.google.ar.core.Config
+import com.google.ar.core.Plane
+import com.google.ar.core.Session
+import com.google.ar.core.TrackingState
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -34,6 +36,7 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
 
     private val backgroundRenderer = BackgroundRenderer()
     private val depthRenderer = DepthRenderer()
+    private val boxRenderer = BoxRenderer()
 
     private var previousTrackingState = TrackingState.STOPPED
 
@@ -129,6 +132,7 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         try {
             backgroundRenderer.createOnGlThread(this)
             depthRenderer.createOnGlThread(this)
+            boxRenderer.createOnGlThread(this)
 
         } catch (e: Exception) {
             Log.e(TAG, "Background Renderer threw exception", e)
@@ -163,6 +167,13 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
                     }
                     depthRenderer.update(it)
                     depthRenderer.draw(camera)
+
+                    // Draw boxes around clusters of points.
+                    val clusteringHelper = PointClusteringHelper(it)
+                    val clusters = clusteringHelper.findClusters()
+                    clusters.forEach { aabb ->
+                        boxRenderer.draw(aabb, camera)
+                    }
                 }
 
                 updateScreenOnTrackingState(camera.trackingState)
