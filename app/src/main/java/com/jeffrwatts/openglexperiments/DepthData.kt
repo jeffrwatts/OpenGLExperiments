@@ -3,20 +3,22 @@ package com.jeffrwatts.openglexperiments
 import android.media.Image
 import android.opengl.Matrix
 import android.util.Log
-import com.google.ar.core.Anchor
-import com.google.ar.core.CameraIntrinsics
-import com.google.ar.core.Frame
+import com.google.ar.core.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.experimental.and
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.sqrt
+
 
 object DepthData {
     const val TAG = "DepthData"
     const val FLOATS_PER_POINT = 4 // X,Y,Z,confidence.
 
+    var confidenceFilter = 0.0
+    var distanceFilter = 10.0
 
     fun create(frame: Frame, cameraPoseAnchor: Anchor): FloatBuffer? {
         try {
@@ -34,6 +36,50 @@ object DepthData {
             Log.e(TAG, "Exception thrown getting depth data", e)
         }
         return null
+    }
+
+    fun filterUsingPlanes(points: FloatBuffer, allPlanes: Collection<Plane>) {
+        val planeNormal = FloatArray(3)
+
+        // Allocate the output buffer.
+        val numPoints = points.remaining() / FLOATS_PER_POINT
+
+        allPlanes.forEach { plane ->
+            if (plane.trackingState != TrackingState.TRACKING || plane.subsumedBy != null) {
+                return@forEach
+            }
+
+            // Compute the normal vector of the plane.
+            val planePose = plane.centerPose
+            planePose.getTransformedAxis(1, 1.0f, planeNormal, 0)
+
+            // Filter points that are too close to the plane.
+            for (index in 0 until numPoints) {
+                // Retrieves the next point.
+                val x = points.get(FLOATS_PER_POINT * index)
+                val y = points.get(FLOATS_PER_POINT * index + 1)
+                val z = points.get(FLOATS_PER_POINT * index + 2)
+
+                // Transforms point to be in world coordinates, to match plane info.
+                val distance = (x - planePose.tx()) * planeNormal[0] +
+                        (y - planePose.ty()) * planeNormal[1] +
+                        (z - planePose.tz()) * planeNormal[2]
+
+                // Controls the size of objects detected.
+                // Smaller values mean smaller objects will be kept.
+                // Larger values will only allow detection of larger objects, but also helps reduce noise.
+                if (abs(distance) > 0.03) {
+                    // Keep this point, since it's far enough away from the plane.
+                    return@forEach
+                }
+
+                // Invalidates points that are too close to planar surfaces.
+                points.put(FLOATS_PER_POINT * index, 0f)
+                points.put(FLOATS_PER_POINT * index + 1, 0f)
+                points.put(FLOATS_PER_POINT * index + 2, 0f)
+                points.put(FLOATS_PER_POINT * index + 3, 0f)
+            }
+        }
     }
 
     private fun convertRawDepthImagesTo3dPointBuffer(depth: Image, confidence: Image, cameraTextureIntrinsics: CameraIntrinsics, modelMatrix: FloatArray): FloatBuffer {
@@ -92,6 +138,11 @@ object DepthData {
                // Retrieve the confidence value for this pixel.
                val confidencePixelValue = confidenceBuffer.get(y*confidenceImagePlane.rowStride + x * confidenceImagePlane.pixelStride)
                val confidenceNormalized = (confidencePixelValue.and(0xff.toByte())).toFloat() / 255.0f
+
+               // Ignore "low-confidence" pixels or pixels that are greater than a certain distance.
+               if (confidenceNormalized < confidenceFilter || depthMeters > distanceFilter) {
+                   continue
+               }
 
                // Unproject the depth into a 3D point in camera coordinates.
                pointCamera[0] = depthMeters * (x - cx) / fx

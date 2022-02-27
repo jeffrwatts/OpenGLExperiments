@@ -5,7 +5,10 @@ import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
+import androidx.core.widget.CompoundButtonCompat
 import com.google.ar.core.*
 import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
@@ -16,8 +19,15 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         const val TAG = "RawDepthAPIActivity"
     }
 
+    private val textViewConfidence: TextView by lazy { findViewById(R.id.textViewConfidence) }
+    private val seekBarConfidence: SeekBar by lazy { findViewById(R.id.seekBarConfidence) }
+    private val textViewMaxDistance: TextView by lazy { findViewById(R.id.textViewMaxDistance) }
+    private val seekBarMaxDistance: SeekBar by lazy { findViewById(R.id.seekBarMaxDistance) }
+    private val switchFilterPlanes: SwitchCompat by lazy { findViewById(R.id.switchFilterPlanes) }
+
     private var isRawDepthSupported = false
     private var arCoreSession: Session? = null
+    private var filterPlanes = true
 
     private lateinit var surfaceView: GLSurfaceView
     private lateinit var displayRotationHelper: DisplayRotationHelper
@@ -33,6 +43,29 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         surfaceView = findViewById(R.id.surfaceview)
         displayRotationHelper = DisplayRotationHelper(this)
 
+        seekBarConfidence.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                setConfidence(progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        setConfidence(seekBarConfidence.progress)
+
+        seekBarMaxDistance.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                setMaxDistance(progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        setMaxDistance(seekBarMaxDistance.progress)
+
+        switchFilterPlanes.isChecked = filterPlanes
+        switchFilterPlanes.setOnCheckedChangeListener { buttonView, isChecked ->
+            filterPlanes = isChecked
+        }
+
         // Setup SurfaceView
         surfaceView.preserveEGLContextOnPause = true;
         surfaceView.setEGLContextClientVersion(2);
@@ -40,6 +73,24 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         surfaceView.setRenderer(this);
         surfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY;
         surfaceView.setWillNotDraw(false);
+    }
+
+    private fun setConfidence(progress: Int) {
+        // Progress represents a percentage.
+        textViewConfidence.text = "Confidence: ${progress*10} %"
+        DepthData.confidenceFilter = progress.toFloat() / 10.0
+    }
+
+    private fun setMaxDistance(progress: Int) {
+        // Progress represents 0.5 meters, with 10 being infinite.
+        var maxDistance = 100.0
+        if (progress < 10) {
+            maxDistance = progress*0.5
+            textViewMaxDistance.text = "Max Distance: ${maxDistance} meters"
+        } else {
+            textViewMaxDistance.text = "Max Distance: No limit"
+        }
+        DepthData.distanceFilter = maxDistance
     }
 
     override fun onResume() {
@@ -107,6 +158,9 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
 
                 val points = DepthData.create(frame, session.createAnchor(camera.pose))
                 points?.let {
+                    if (filterPlanes) {
+                        DepthData.filterUsingPlanes(it, session.getAllTrackables(Plane::class.java))
+                    }
                     depthRenderer.update(it)
                     depthRenderer.draw(camera)
                 }
