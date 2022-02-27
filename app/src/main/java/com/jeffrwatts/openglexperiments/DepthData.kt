@@ -19,6 +19,7 @@ object DepthData {
 
     var confidenceFilter = 0.0
     var distanceFilter = 10.0
+    var planeFilterDistance = 0.03
 
     fun create(frame: Frame, cameraPoseAnchor: Anchor): FloatBuffer? {
         try {
@@ -68,7 +69,8 @@ object DepthData {
                 // Controls the size of objects detected.
                 // Smaller values mean smaller objects will be kept.
                 // Larger values will only allow detection of larger objects, but also helps reduce noise.
-                if (abs(distance) > 0.03) {
+                Log.d(TAG, "planeFilterDistance: $planeFilterDistance")
+                if (abs(distance) > planeFilterDistance) {
                     // Keep this point, since it's far enough away from the plane.
                     return@forEach
                 }

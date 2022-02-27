@@ -25,11 +25,13 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
     private val seekBarConfidence: SeekBar by lazy { findViewById(R.id.seekBarConfidence) }
     private val textViewMaxDistance: TextView by lazy { findViewById(R.id.textViewMaxDistance) }
     private val seekBarMaxDistance: SeekBar by lazy { findViewById(R.id.seekBarMaxDistance) }
-    private val switchFilterPlanes: SwitchCompat by lazy { findViewById(R.id.switchFilterPlanes) }
+    private val textViewPlaneFilterDistance: TextView by lazy { findViewById(R.id.textViewPlaneFilterDistance) }
+    private val seekBarPlaneFilterDistance: SeekBar by lazy { findViewById(R.id.seekBarPlaneFilterDistance) }
+    private val switchEnableClustering: SwitchCompat by lazy { findViewById(R.id.switchEnableClustering) }
 
     private var isRawDepthSupported = false
     private var arCoreSession: Session? = null
-    private var filterPlanes = true
+    private var enableClustering = true
 
     private lateinit var surfaceView: GLSurfaceView
     private lateinit var displayRotationHelper: DisplayRotationHelper
@@ -64,9 +66,18 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
         })
         setMaxDistance(seekBarMaxDistance.progress)
 
-        switchFilterPlanes.isChecked = filterPlanes
-        switchFilterPlanes.setOnCheckedChangeListener { buttonView, isChecked ->
-            filterPlanes = isChecked
+        seekBarPlaneFilterDistance.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                setPlaneFilterDistance(progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        setPlaneFilterDistance(seekBarPlaneFilterDistance.progress)
+
+        switchEnableClustering.isChecked = enableClustering
+        switchEnableClustering.setOnCheckedChangeListener { buttonView, isChecked ->
+            enableClustering = isChecked
         }
 
         // Setup SurfaceView
@@ -94,6 +105,21 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
             textViewMaxDistance.text = "Max Distance: No limit"
         }
         DepthData.distanceFilter = maxDistance
+    }
+
+    private fun setPlaneFilterDistance(progress: Int) {
+        var planeFilterDistance = progress * 0.01
+        if (progress == 7) {
+            planeFilterDistance = 0.1
+        } else if (progress == 8) {
+            planeFilterDistance = 0.5
+        } else if (progress == 9) {
+            planeFilterDistance = 1.0
+        } else if (progress == 10) {
+            planeFilterDistance = 10.0
+        }
+        DepthData.planeFilterDistance = planeFilterDistance
+        textViewPlaneFilterDistance.text = "Plane Filter Distance: $planeFilterDistance"
     }
 
     override fun onResume() {
@@ -162,17 +188,17 @@ class RawDepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer{
 
                 val points = DepthData.create(frame, session.createAnchor(camera.pose))
                 points?.let {
-                    if (filterPlanes) {
-                        DepthData.filterUsingPlanes(it, session.getAllTrackables(Plane::class.java))
-                    }
+                    DepthData.filterUsingPlanes(it, session.getAllTrackables(Plane::class.java))
                     depthRenderer.update(it)
                     depthRenderer.draw(camera)
 
                     // Draw boxes around clusters of points.
-                    val clusteringHelper = PointClusteringHelper(it)
-                    val clusters = clusteringHelper.findClusters()
-                    clusters.forEach { aabb ->
-                        boxRenderer.draw(aabb, camera)
+                    if (enableClustering) {
+                        val clusteringHelper = PointClusteringHelper(it)
+                        val clusters = clusteringHelper.findClusters()
+                        clusters.forEach { aabb ->
+                            boxRenderer.draw(aabb, camera)
+                        }
                     }
                 }
 

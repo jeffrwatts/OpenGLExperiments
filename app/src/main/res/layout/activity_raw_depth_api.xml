@@ -65,16 +65,40 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textViewMaxDistance" />
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/switchFilterPlanes"
+    <TextView
+        android:id="@+id/textViewPlaneFilterDistance"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp"
-        android:text="Filter Planes"
+        android:text="Plane Filter Distance"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/seekBarMaxDistance" />
+
+    <SeekBar
+        android:id="@+id/seekBarPlaneFilterDistance"
+        style="@style/Widget.AppCompat.SeekBar.Discrete"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:max="10"
+        android:progress="3"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewPlaneFilterDistance" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchEnableClustering"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="Enable Clustering"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/seekBarPlaneFilterDistance" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
