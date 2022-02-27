@@ -65,16 +65,26 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textViewMaxDistance" />
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchEnablePlaneFiltering"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:text="Enable Plane Filtering"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/seekBarMaxDistance" />
+
     <TextView
         android:id="@+id/textViewPlaneFilterDistance"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="16dp"
         android:text="Plane Filter Distance"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/seekBarMaxDistance" />
+        app:layout_constraintTop_toBottomOf="@+id/switchEnablePlaneFiltering" />
 
     <SeekBar
         android:id="@+id/seekBarPlaneFilterDistance"
@@ -99,6 +109,8 @@
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/seekBarPlaneFilterDistance" />
+
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
