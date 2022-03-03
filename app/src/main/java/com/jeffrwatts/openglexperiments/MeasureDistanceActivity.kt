@@ -2,57 +2,39 @@ package com.jeffrwatts.openglexperiments
 
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import com.google.ar.core.*
+import com.google.ar.core.Session
+import com.google.ar.core.TrackingState
 import com.jeffrwatts.openglexperiments.helpers.DisplayRotationHelper
-import com.jeffrwatts.openglexperiments.helpers.TapHelper
 import com.jeffrwatts.openglexperiments.renderers.BackgroundRenderer
 import com.jeffrwatts.openglexperiments.renderers.DepthTextureHandler
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-
-class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
+class MeasureDistanceActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     companion object {
-        const val TAG = "RawDepthActivity"
+        const val TAG = "MeasureDistanceActivity"
     }
 
-    private var showDepthMap = false
-    private var isDepthSupported = false
-    private var arCoreSession: Session? = null
-
-    private val buttonShowDepth: Button by lazy { findViewById(R.id.buttonShowDepth) }
     private lateinit var surfaceView: GLSurfaceView
     private lateinit var displayRotationHelper: DisplayRotationHelper
+    private var arCoreSession: Session? = null
 
     private val backgroundRenderer = BackgroundRenderer()
     private val depthTextureHelper = DepthTextureHandler()
-    private val tapHelper: TapHelper by lazy { TapHelper(this) }
 
     private var previousTrackingState = TrackingState.STOPPED
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_depth_api)
-        surfaceView = findViewById(R.id.surfaceview)
-        surfaceView.setOnTouchListener(tapHelper)
-        displayRotationHelper = DisplayRotationHelper(this)
+        setContentView(R.layout.activity_measure_depth)
 
-        buttonShowDepth.setOnClickListener {
-            if (isDepthSupported) {
-                showDepthMap = !showDepthMap
-                buttonShowDepth.text = if (showDepthMap) "Hide Depth" else "Show Depth"
-            } else {
-                showDepthMap = false
-                buttonShowDepth.text = "Depth Not Supported"
-            }
-        }
+        surfaceView = findViewById(R.id.surfaceview)
+        displayRotationHelper = DisplayRotationHelper(this)
 
         // Setup SurfaceView
         surfaceView.preserveEGLContextOnPause = true;
@@ -64,14 +46,12 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     override fun onResume() {
-        Log.d(TAG, "onResume")
+        Log.d(DepthAPIActivity.TAG, "onResume")
         super.onResume()
         if (arCoreSession == null) {
-            Log.d(TAG, "Create Session")
+            Log.d(DepthAPIActivity.TAG, "Create Session")
             arCoreSession = Session(this).also { session->
                 val config = session.config
-                isDepthSupported = session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)
-                config.depthMode = if (isDepthSupported) Config.DepthMode.AUTOMATIC else Config.DepthMode.DISABLED
                 session.configure(config)
             }
         }
@@ -82,7 +62,7 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     override fun onPause() {
-        Log.d(TAG, "onPause")
+        Log.d(DepthAPIActivity.TAG, "onPause")
         super.onPause()
         // Note that the order matters - GLSurfaceView is paused first so that it does not try
         // to query the session. If Session is paused before GLSurfaceView, GLSurfaceView may
@@ -93,19 +73,19 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        Log.d(TAG, "onSurfaceCreated")
+        Log.d(DepthAPIActivity.TAG, "onSurfaceCreated")
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f)
         try {
             depthTextureHelper.createOnGlThread()
             backgroundRenderer.createOnGlThread(this)
             backgroundRenderer.createDepthShaders(this, depthTextureHelper.depthTexture)
         } catch (e: Exception) {
-            Log.e(TAG, "Background Renderer threw exception", e)
+            Log.e(DepthAPIActivity.TAG, "Background Renderer threw exception", e)
         }
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        Log.d(TAG, "onSurfaceChanged")
+        Log.d(DepthAPIActivity.TAG, "onSurfaceChanged")
         displayRotationHelper.onSurfaceChanaged(width, height)
         GLES20.glViewport(0, 0, width, height);
     }
@@ -122,19 +102,8 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             val frame = session.update()
             val camera = frame.camera
 
-            if (isDepthSupported) {
-                depthTextureHelper.update(frame)
-            }
-
-            if (camera.trackingState == TrackingState.TRACKING) {
-                handleTap(frame, camera)
-            }
-
             backgroundRenderer.draw(frame)
 
-            if (showDepthMap) {
-                backgroundRenderer.drawDepth(frame)
-            }
             updateScreenOnTrackingState(camera.trackingState)
             if(camera.trackingState == TrackingState.PAUSED) {
                 return
@@ -145,7 +114,7 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         if (trackingState == previousTrackingState) {
             return
         }
-        Log.d(TAG, "Camera Tracking State: $trackingState")
+        Log.d(DepthAPIActivity.TAG, "Camera Tracking State: $trackingState")
         previousTrackingState = trackingState
         when(trackingState) {
             TrackingState.STOPPED->{
@@ -155,20 +124,6 @@ class DepthAPIActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 runOnUiThread { window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
             }
             else->{}
-        }
-    }
-
-    private fun handleTap(frame: Frame, camera: Camera) {
-        val motionEvent = tapHelper.poll()
-
-        motionEvent?.let { event ->
-            frame.hitTest(event).forEach { hit ->
-                (hit.trackable as? DepthPoint)?.let {
-                    runOnUiThread {
-                        Toast.makeText(this,"Distance at tap is ${hit.distance} meters.", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
         }
     }
 }

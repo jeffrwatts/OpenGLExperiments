@@ -1,4 +1,4 @@
-package com.jeffrwatts.openglexperiments
+package com.jeffrwatts.openglexperiments.helpers
 
 import android.content.Context
 import android.view.GestureDetector

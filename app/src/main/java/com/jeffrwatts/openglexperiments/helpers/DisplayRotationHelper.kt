@@ -1,7 +1,6 @@
-package com.jeffrwatts.openglexperiments
+package com.jeffrwatts.openglexperiments.helpers
 
 import android.content.Context
-import android.hardware.camera2.CameraManager
 import android.hardware.display.DisplayManager
 import com.google.ar.core.Session
 
@@ -12,7 +11,6 @@ class DisplayRotationHelper (context: Context) : DisplayManager.DisplayListener 
     private var viewPortChanged = false
     private val display = context.display
     private val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-    //private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
     fun onResume() { displayManager.registerDisplayListener(this, null)}
     fun onPause() { displayManager.unregisterDisplayListener(this)}

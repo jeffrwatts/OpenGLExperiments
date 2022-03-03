@@ -1,4 +1,4 @@
-package com.jeffrwatts.openglexperiments
+package com.jeffrwatts.openglexperiments.renderers
 
 import android.media.Image
 import android.opengl.GLES20
